@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RequestLogTable,
   appShortName,
   formatLogTime,
 } from "@/components/usage/RequestLogTable";
-import type { UsageRangeSelection } from "@/types/usage";
+import type { RequestLog, UsageRangeSelection } from "@/types/usage";
 
 const useRequestLogsMock = vi.hoisted(() => vi.fn());
 
@@ -41,6 +42,103 @@ describe("RequestLogTable", () => {
         },
         isLoading: false,
       }),
+    );
+  });
+
+  it("jumps to the typed page only when the jump button is clicked", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+    );
+    const input = screen.getByRole("textbox", {
+      name: "usage.pageInputPlaceholder",
+    });
+    const jump = screen.getByRole("button", { name: "usage.goToPage" });
+    expect(jump).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, "5");
+    expect(jump).toBeEnabled();
+    fireEvent.blur(input);
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 0 }),
+    );
+    await user.click(jump);
+
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 4 }),
+    );
+    expect(input).toHaveValue("5");
+    expect(jump).toBeDisabled();
+  });
+
+  it("supports Enter to jump and Escape to discard a page draft", () => {
+    render(
+      <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+    );
+    const input = screen.getByRole("textbox", {
+      name: "usage.pageInputPlaceholder",
+    });
+    fireEvent.change(input, { target: { value: "6" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 5 }),
+    );
+    expect(
+      screen.getByRole("button", { name: "usage.nextPage" }),
+    ).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: "2" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input).toHaveValue("6");
+    expect(
+      screen.getByRole("button", { name: "usage.goToPage" }),
+    ).toBeDisabled();
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 5 }),
+    );
+  });
+
+  it.each(["", "0", "-1", "7", "1.5", "abc", "1e2", "999999999999999999999"])(
+    "rejects invalid or out-of-range page input %j",
+    (value) => {
+      render(
+        <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+      );
+      const input = screen.getByRole("textbox", {
+        name: "usage.pageInputPlaceholder",
+      });
+      fireEvent.change(input, { target: { value } });
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.getByRole("button", { name: "usage.goToPage" }),
+      ).toBeDisabled();
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 0 }),
+      );
+    },
+  );
+
+  it("clears an uncommitted draft when navigating with the arrows", () => {
+    render(
+      <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+    );
+    const input = screen.getByRole("textbox", {
+      name: "usage.pageInputPlaceholder",
+    });
+    fireEvent.change(input, { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "usage.nextPage" }));
+    expect(input).toHaveValue("2");
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+    );
+
+    fireEvent.change(input, { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "usage.prevPage" }));
+    expect(input).toHaveValue("1");
+    expect(useRequestLogsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 0 }),
     );
   });
 
@@ -205,6 +303,13 @@ describe("RequestLogTable", () => {
 
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(4);
+    expect(rows[0].children[6]).toHaveTextContent("12.9s/1.8s");
+    expect(rows[1].children[6]).toHaveTextContent("2.4s/1.9s");
+    expect(rows[2].children[6]).toHaveTextContent("—");
+    expect(rows[3].children[6]).toHaveTextContent("≈10.0s/—");
+    expect(
+      screen.getByRole("columnheader", { name: "usage.timingInfo" }),
+    ).toBeInTheDocument();
     expect(rows[0].lastElementChild).toHaveTextContent("99tok/s");
     expect(rows[0].lastElementChild).toHaveAttribute(
       "title",
@@ -223,6 +328,135 @@ describe("RequestLogTable", () => {
 
     fireEvent.click(rows[1]);
     expect(onOpenDetail).toHaveBeenCalledWith("short");
+  });
+
+  it("shows full cache counts below fresh input without double-counting Codex input", () => {
+    const base: RequestLog = {
+      requestId: "claude-cache",
+      providerId: "p1",
+      providerName: "Codex subscription",
+      appType: "claude",
+      model: "gpt-6.1-sol",
+      costMultiplier: "1",
+      inputTokens: 2_195,
+      outputTokens: 1_543,
+      cacheReadTokens: 600_960,
+      cacheCreationTokens: 1_024,
+      inputCostUsd: "0",
+      outputCostUsd: "0",
+      cacheReadCostUsd: "0",
+      cacheCreationCostUsd: "0",
+      totalCostUsd: "0.28",
+      latencyMs: 46_300,
+      firstTokenMs: 7_000,
+      isStreaming: true,
+      statusCode: 200,
+      createdAt: Math.floor(Date.now() / 1000),
+    };
+    useRequestLogsMock.mockReturnValue({
+      data: {
+        data: [
+          base,
+          {
+            ...base,
+            requestId: "codex-cache",
+            appType: "codex",
+            inputTokens: 603_155,
+            cacheCreationTokens: 0,
+          },
+          { ...base, requestId: "write-only", cacheReadTokens: 0 },
+        ],
+        total: 3,
+      },
+      isLoading: false,
+    });
+
+    render(
+      <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+    );
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0].children[4].firstElementChild).toHaveTextContent("2,195");
+    expect(rows[0].children[4]).toHaveTextContent("R600,960");
+    expect(rows[0].children[4]).toHaveTextContent("W1,024");
+    expect(rows[0].children[6]).toHaveTextContent("46.3s/7.0s");
+    expect(rows[1].children[4].firstElementChild).toHaveTextContent("2,195");
+    expect(rows[1].children[4]).toHaveTextContent("R600,960");
+    expect(rows[1].children[4]).not.toHaveTextContent("W");
+    expect(rows[2].children[4]).toHaveTextContent("W1,024");
+    expect(rows[2].children[4]).not.toHaveTextContent("R");
+    expect(rows[0].children).toHaveLength(9);
+  });
+
+  it("keeps missing timings distinct from zero and supports stored duration", () => {
+    const base: RequestLog = {
+      requestId: "missing",
+      providerId: "p1",
+      appType: "claude",
+      model: "model",
+      costMultiplier: "1",
+      inputTokens: 10,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      inputCostUsd: "0",
+      outputCostUsd: "0",
+      cacheReadCostUsd: "0",
+      cacheCreationCostUsd: "0",
+      totalCostUsd: "0",
+      latencyMs: 0,
+      isStreaming: false,
+      statusCode: 200,
+      createdAt: Math.floor(Date.now() / 1000),
+    };
+    useRequestLogsMock.mockReturnValue({
+      data: {
+        data: [
+          base,
+          { ...base, requestId: "no-ttft", latencyMs: 4_400 },
+          {
+            ...base,
+            requestId: "zero-ttft",
+            latencyMs: 3_800,
+            firstTokenMs: 0,
+          },
+          {
+            ...base,
+            requestId: "duration",
+            durationMs: 23_800,
+            firstTokenMs: 9_500,
+          },
+          {
+            ...base,
+            requestId: "zero-duration",
+            durationMs: 0,
+            latencyMs: 5_500,
+          },
+          {
+            ...base,
+            requestId: "estimated-small-output",
+            latencyMs: 4_000,
+            dataSource: "codex_session",
+          },
+        ],
+        total: 6,
+      },
+      isLoading: false,
+    });
+
+    render(
+      <RequestLogTable range={{ preset: "today" }} refreshIntervalMs={0} />,
+    );
+
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows[0].children[6]).toHaveTextContent("—");
+    expect(rows[0].children[4]).not.toHaveTextContent(/[RW]/);
+    expect(rows[1].children[6]).toHaveTextContent("4.4s/—");
+    expect(rows[2].children[6]).toHaveTextContent("3.8s/0.0s");
+    expect(rows[3].children[6]).toHaveTextContent("23.8s/9.5s");
+    expect(rows[4].children[6]).toHaveTextContent("5.5s/—");
+    expect(rows[5].children[6]).toHaveTextContent("≈4.0s/—");
+    expect(rows[5].lastElementChild).toHaveTextContent("—");
   });
 
   it("shows full provider names on hover and short app names in the app column", () => {

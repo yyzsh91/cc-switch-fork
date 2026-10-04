@@ -21,6 +21,7 @@ import {
   formatOutputTokensPerSecond,
   formatTokensCompact,
   getLocaleFromLanguage,
+  isSessionLogRequest,
   parseFiniteNumber,
 } from "./format";
 import { usageTable } from "./usageTable";
@@ -151,14 +152,20 @@ export function RequestLogTable({
     range.preset,
   ]);
 
+  const draftPage =
+    pageDraft != null && /^\d+$/.test(pageDraft.trim())
+      ? Number(pageDraft.trim())
+      : null;
+  const canJump =
+    draftPage != null &&
+    Number.isSafeInteger(draftPage) &&
+    draftPage >= 1 &&
+    draftPage <= totalPages;
+
   const commitPageDraft = () => {
-    if (pageDraft == null) return;
-    const trimmed = pageDraft.trim();
+    if (!canJump) return;
+    setPage(draftPage - 1);
     setPageDraft(null);
-    if (!/^\d+$/.test(trimmed)) return;
-    const parsed = Number(trimmed);
-    if (parsed < 1 || parsed > totalPages) return;
-    setPage(parsed - 1);
   };
 
   const language = i18n.resolvedLanguage || i18n.language || "en";
@@ -182,25 +189,34 @@ export function RequestLogTable({
     const estimatedTps =
       exactTps == null ? formatEstimatedTokensPerSecond(log) : null;
     const tps = exactTps ?? estimatedTps;
-    const latency = parseFiniteNumber(log.latencyMs);
+    const duration = parseFiniteNumber(log.durationMs);
+    const latency =
+      duration != null && duration > 0
+        ? duration
+        : parseFiniteNumber(log.latencyMs);
     const firstToken = parseFiniteNumber(log.firstTokenMs);
-    const timingTip =
-      latency != null && latency > 0 && firstToken != null
+    const hasDuration = latency != null && latency > 0;
+    const hasFirstToken = firstToken != null && firstToken >= 0;
+    const estimatedDuration =
+      hasDuration && !hasFirstToken && isSessionLogRequest(log);
+    const timingTip = hasDuration
+      ? hasFirstToken
         ? t("usage.timingTip", {
             duration: (latency / 1000).toFixed(1),
             ttft: (firstToken / 1000).toFixed(1),
           })
-        : estimatedTps != null && latency != null
+        : estimatedDuration
           ? t("usage.estimatedTimingTip", {
               duration: (latency / 1000).toFixed(1),
             })
-          : undefined;
+          : `${t("usage.detail.duration")}: ${(latency / 1000).toFixed(1)}s`
+      : undefined;
     const multiplier = parseFiniteNumber(log.costMultiplier);
     const modelTitle =
       log.requestModel && log.requestModel !== log.model
         ? `${log.requestModel} → ${log.model}`
         : log.model;
-    const hasCache = log.cacheReadTokens > 0;
+    const hasCache = log.cacheReadTokens > 0 || log.cacheCreationTokens > 0;
 
     return (
       <tr
@@ -265,14 +281,30 @@ export function RequestLogTable({
           </span>
         </td>
         <td
-          className={usageTable.tdEnd}
+          className={cn(usageTable.tdEnd, "py-1.5")}
           title={
             isCacheInclusive
               ? `${fmtInt(freshInput, locale)} (${t("usage.rawInputLabel")}: ${fmtInt(log.inputTokens, locale)})`
               : fmtInt(freshInput, locale)
           }
         >
-          {formatTokensCompact(freshInput, locale)}
+          <div>{formatTokensCompact(freshInput, locale)}</div>
+          {hasCache && (
+            <div
+              className="mt-0.5 flex justify-end gap-1.5 text-caption text-fg-3"
+              title={t("usage.cacheTip", {
+                read: fmtInt(log.cacheReadTokens, locale),
+                write: fmtInt(log.cacheCreationTokens, locale),
+              })}
+            >
+              {log.cacheReadTokens > 0 && (
+                <span>R{fmtInt(log.cacheReadTokens, locale)}</span>
+              )}
+              {log.cacheCreationTokens > 0 && (
+                <span>W{fmtInt(log.cacheCreationTokens, locale)}</span>
+              )}
+            </div>
+          )}
         </td>
         <td
           className={usageTable.tdEnd}
@@ -281,13 +313,20 @@ export function RequestLogTable({
           {formatTokensCompact(log.outputTokens, locale)}
         </td>
         <td
-          className={cn(usageTable.tdEnd, !hasCache && usageTable.muted)}
-          title={t("usage.cacheTip", {
-            read: fmtInt(log.cacheReadTokens, locale),
-            write: fmtInt(log.cacheCreationTokens, locale),
-          })}
+          className={cn(usageTable.tdEnd, !hasDuration && usageTable.muted)}
+          title={timingTip}
         >
-          {hasCache ? formatTokensCompact(log.cacheReadTokens, locale) : "—"}
+          {hasDuration ? (
+            <>
+              {estimatedDuration && "≈"}
+              {(latency / 1000).toFixed(1)}s
+              <span className="text-caption text-fg-3">
+                /{hasFirstToken ? `${(firstToken / 1000).toFixed(1)}s` : "—"}
+              </span>
+            </>
+          ) : (
+            "—"
+          )}
         </td>
         <td
           className={cn(
@@ -338,7 +377,7 @@ export function RequestLogTable({
               <th className={usageTable.th}>{t("usage.model")}</th>
               <th className={usageTable.thEnd}>{t("usage.freshInput")}</th>
               <th className={usageTable.thEnd}>{t("usage.outputTokens")}</th>
-              <th className={usageTable.thEnd}>{t("usage.cacheReadTokens")}</th>
+              <th className={usageTable.thEnd}>{t("usage.timingInfo")}</th>
               <th className={usageTable.thEnd}>{t("usage.cost")}</th>
               <th className={usageTable.thEnd}>
                 <span className="inline-flex items-center gap-0.5">
@@ -375,7 +414,10 @@ export function RequestLogTable({
             className="inline-flex h-7 w-7 items-center justify-center rounded-control text-fg-2 transition-colors hover:bg-subtle hover:text-fg-1 disabled:pointer-events-none disabled:opacity-45"
             aria-label={t("usage.prevPage")}
             disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => {
+              setPageDraft(null);
+              setPage((p) => Math.max(0, p - 1));
+            }}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -385,14 +427,20 @@ export function RequestLogTable({
             type="text"
             inputMode="numeric"
             aria-label={t("usage.pageInputPlaceholder")}
-            className="h-6 w-9 rounded-[4px] border border-transparent bg-transparent text-center text-caption text-fg-1 transition-[border-color,box-shadow] hover:border-border-strong focus:border-ring focus:bg-surface focus:outline-none focus:ring-[3px] focus:ring-ring/20"
+            aria-invalid={pageDraft != null && !canJump}
+            className="h-7 w-14 rounded-control border border-border bg-surface text-center text-caption text-fg-1 transition-[border-color,box-shadow] hover:border-border-strong focus:border-ring focus:outline-none focus:ring-[3px] focus:ring-ring/20"
             value={pageDraft ?? String(page + 1)}
             onChange={(event) => setPageDraft(event.target.value)}
             onFocus={(event) => event.target.select()}
-            onBlur={commitPageDraft}
             onKeyDown={(event) => {
-              if (event.key === "Enter") commitPageDraft();
-              if (event.key === "Escape") setPageDraft(null);
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitPageDraft();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setPageDraft(null);
+              }
             }}
           />
           <span>/ {fmtInt(totalPages, locale)}</span>
@@ -403,11 +451,22 @@ export function RequestLogTable({
             className="inline-flex h-7 w-7 items-center justify-center rounded-control text-fg-2 transition-colors hover:bg-subtle hover:text-fg-1 disabled:pointer-events-none disabled:opacity-45"
             aria-label={t("usage.nextPage")}
             disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onClick={() => {
+              setPageDraft(null);
+              setPage((p) => Math.min(totalPages - 1, p + 1));
+            }}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </HoverTip>
+        <button
+          type="button"
+          className="h-7 rounded-control border border-border px-2 text-caption text-fg-2 transition-colors hover:bg-subtle hover:text-fg-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+          disabled={!canJump}
+          onClick={commitPageDraft}
+        >
+          {t("usage.goToPage")}
+        </button>
       </div>
     </div>
   );
