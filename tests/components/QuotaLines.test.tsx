@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { QuotaLines } from "@/components/quota/QuotaLines";
 import type { QuotaLine } from "@/components/quota/quotaRules";
@@ -51,6 +51,40 @@ describe("QuotaLines text refresh", () => {
     expect(button).toBeEnabled();
     fireEvent.click(button);
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows each tier reset countdown beside the remaining amount and updates it", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-04T12:00:00.000Z"));
+    const resetAt = "2026-10-04T18:16:00.000Z";
+    const { unmount } = render(
+      <QuotaLines
+        lines={[
+          {
+            ...lines[0],
+            text: "Weekly 58% left",
+            detail: "Weekly · resets in 6h16m",
+            resetLabel: "Weekly",
+            resetsAt: resetAt,
+          },
+        ]}
+      />,
+    );
+
+    try {
+      const countdown = screen.getByText("6h16m");
+      expect(screen.getByText("Weekly 58% left")).toBeInTheDocument();
+      expect(countdown).toHaveAttribute("title", "subscription.resetsIn");
+      expect(countdown.querySelector("svg")).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+      });
+      expect(screen.getByText("6h15m")).toBeInTheDocument();
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
   });
 
   it("keeps read-only quota and empty states free of buttons", () => {

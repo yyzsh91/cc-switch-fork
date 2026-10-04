@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { RefreshCw } from "lucide-react";
+import { Clock3, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { HoverTip } from "@/components/ui/hover-tip";
 import {
   cardRows,
+  countdownStr,
   formatRelativeTime,
   type QuotaLine,
   type QuotaTone,
@@ -59,12 +60,36 @@ export function QuotaLines({
   onRefresh,
 }: QuotaLinesProps) {
   const { t } = useTranslation();
-  const now = useNow(Boolean(queriedAt));
+  const hasResetCountdown = lines.some((line) => countdownStr(line.resetsAt));
+  const now = useNow(Boolean(queriedAt) || hasResetCountdown);
   const rows = cardRows(lines, max);
   if (rows.length === 0) return null;
 
+  const lineTitle = (line: QuotaLine) => {
+    if (line.resetLabel && line.resetsAt) {
+      const countdown = countdownStr(line.resetsAt);
+      return countdown
+        ? `${line.resetLabel} · ${t("subscription.resetsIn", { time: countdown })}`
+        : line.resetLabel;
+    }
+    return line.detail ?? line.text;
+  };
+  const resetTime = (line: QuotaLine) => {
+    const countdown = countdownStr(line.resetsAt);
+    if (!countdown) return null;
+    return (
+      <span
+        className="inline-flex shrink-0 items-center gap-0.5 text-badge text-fg-3"
+        title={t("subscription.resetsIn", { time: countdown })}
+      >
+        <Clock3 aria-hidden="true" className="h-3 w-3" />
+        {` ${countdown}`}
+      </span>
+    );
+  };
+
   const title = [
-    ...lines.map((line) => line.detail ?? line.text),
+    ...lines.map(lineTitle),
     queriedAt
       ? t("quota.updatedAt", { time: formatRelativeTime(queriedAt, now, t) })
       : null,
@@ -77,19 +102,28 @@ export function QuotaLines({
     row.length === 1 ? (
       <span
         key={row[0].key}
-        className={cn("max-w-full truncate", TONE_TEXT[row[0].tone])}
+        className="inline-flex max-w-full min-w-0 items-center justify-end gap-1"
       >
-        {row[0].text}
+        <span className={cn("min-w-0 truncate", TONE_TEXT[row[0].tone])}>
+          {row[0].text}
+        </span>
+        {resetTime(row[0])}
       </span>
     ) : (
       <span
         key={row.map((line) => line.key).join("+")}
-        className="max-w-full truncate text-fg-2"
+        className="inline-flex max-w-full min-w-0 items-center gap-1.5 truncate text-fg-2"
       >
         {row.map((line, index) => (
-          <span key={line.key}>
+          <span
+            key={line.key}
+            className="inline-flex min-w-0 items-center gap-0.5"
+          >
             {index > 0 && " · "}
-            <span className={TONE_TEXT[line.tone]}>{line.short}</span>
+            <span className={cn("truncate", TONE_TEXT[line.tone])}>
+              {line.short}
+            </span>
+            {resetTime(line)}
           </span>
         ))}
       </span>
@@ -97,7 +131,7 @@ export function QuotaLines({
   );
 
   const className = cn(
-    "flex w-[136px] shrink-0 flex-col items-end text-caption leading-[18px] tabular-nums whitespace-nowrap",
+    "flex w-[232px] shrink-0 flex-col items-end text-caption leading-[18px] tabular-nums whitespace-nowrap",
     loading && "opacity-60",
   );
 

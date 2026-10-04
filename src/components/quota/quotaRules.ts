@@ -18,6 +18,9 @@ export interface QuotaLine {
   left: number;
   /** 悬停时补充的一句（重置时间、套餐名） */
   detail?: string;
+  /** 额度档位的重置倒计时（卡片上实时显示） */
+  resetsAt?: string | null;
+  resetLabel?: string;
   /** 并进卡片合并行时的写法（「每周 64%」）；只有按档的额度行才有 */
   short?: string;
   /** 档位窗口的长短次序，越小越短（见 TIER_WINDOW_ORDER） */
@@ -92,6 +95,8 @@ export function tierLine(
     detail: countdown
       ? `${label} · ${t("subscription.resetsIn", { time: countdown })}`
       : undefined,
+    resetsAt: tier.resetsAt,
+    resetLabel: label,
     short:
       shortLabel === undefined
         ? undefined

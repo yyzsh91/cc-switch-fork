@@ -479,7 +479,7 @@ export function ProviderCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <div className="max-w-[160px] text-end">
+          <div className="max-w-[256px] text-end">
             <div className="flex items-center justify-end gap-1">
               {isCopilot ? (
                 <CopilotQuotaFooter
