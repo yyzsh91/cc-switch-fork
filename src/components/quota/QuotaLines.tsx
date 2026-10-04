@@ -6,6 +6,7 @@ import { HoverTip } from "@/components/ui/hover-tip";
 import {
   cardRows,
   countdownStr,
+  formatQuotaQueriedAgo,
   formatRelativeTime,
   type QuotaLine,
   type QuotaTone,
@@ -98,36 +99,51 @@ export function QuotaLines({
     .filter(Boolean)
     .join("\n");
 
-  const body = rows.map((row) =>
-    row.length === 1 ? (
-      <span
-        key={row[0].key}
-        className="inline-flex max-w-full min-w-0 items-center justify-end gap-1"
-      >
-        <span className={cn("min-w-0 truncate", TONE_TEXT[row[0].tone])}>
-          {row[0].text}
+  const body = (
+    <>
+      {queriedAt != null && (
+        <span
+          className="inline-flex items-center gap-0.5 text-badge leading-[18px] text-fg-3"
+          title={t("quota.updatedAt", {
+            time: formatRelativeTime(queriedAt, now, t),
+          })}
+        >
+          <RefreshCw aria-hidden="true" className="h-3 w-3" />
+          {formatQuotaQueriedAgo(queriedAt, now, t)}
         </span>
-        {resetTime(row[0])}
-      </span>
-    ) : (
-      <span
-        key={row.map((line) => line.key).join("+")}
-        className="inline-flex max-w-full min-w-0 items-center gap-1.5 truncate text-fg-2"
-      >
-        {row.map((line, index) => (
+      )}
+      {rows.map((row) =>
+        row.length === 1 ? (
           <span
-            key={line.key}
-            className="inline-flex min-w-0 items-center gap-0.5"
+            key={row[0].key}
+            className="inline-flex max-w-full min-w-0 items-center justify-end gap-1"
           >
-            {index > 0 && " · "}
-            <span className={cn("truncate", TONE_TEXT[line.tone])}>
-              {line.short}
+            <span className={cn("min-w-0 truncate", TONE_TEXT[row[0].tone])}>
+              {row[0].text}
             </span>
-            {resetTime(line)}
+            {resetTime(row[0])}
           </span>
-        ))}
-      </span>
-    ),
+        ) : (
+          <span
+            key={row.map((line) => line.key).join("+")}
+            className="inline-flex max-w-full min-w-0 items-center gap-1.5 truncate text-fg-2"
+          >
+            {row.map((line, index) => (
+              <span
+                key={line.key}
+                className="inline-flex min-w-0 items-center gap-0.5"
+              >
+                {index > 0 && " · "}
+                <span className={cn("truncate", TONE_TEXT[line.tone])}>
+                  {line.short}
+                </span>
+                {resetTime(line)}
+              </span>
+            ))}
+          </span>
+        ),
+      )}
+    </>
   );
 
   const className = cn(

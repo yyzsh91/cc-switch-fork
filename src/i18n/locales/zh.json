@@ -1997,6 +1997,7 @@
     "realTotal": "真实消耗 Tokens",
     "realTotalHint": "Input + Output + 缓存写入 + 缓存命中",
     "freshInput": "新增输入",
+    "totalInputWithCache": "总输入（含缓存）",
     "cacheHitRate": "缓存命中率",
     "requestLogs": "请求日志",
     "providerStats": "Provider 统计",
@@ -2214,6 +2215,8 @@
       "more": "更多指标",
       "realTotalHelpTitle": "真实消耗 Tokens 怎么算",
       "realTotalHelp": "新增输入 + 输出 + 缓存写入 + 缓存命中。新增输入不含缓存；部分协议（如 OpenAI）不上报缓存写入，这一项可能偏低。",
+      "totalInputWithCacheHelpTitle": "总输入（含缓存）怎么算",
+      "totalInputWithCacheHelp": "新增输入 + 缓存写入 + 缓存命中，不含输出。部分协议（如 OpenAI）不上报缓存写入，因此总量可能偏低。",
       "hitRateHelpTitle": "缓存命中率怎么算",
       "hitRateHelp": "缓存命中 ÷（新增输入 + 缓存写入 + 缓存命中）。"
     },
@@ -4133,6 +4136,9 @@
       "tokenRefreshPending": "令牌待刷新"
     },
     "updatedAt": "{{time}}更新",
+    "queriedSecondsAgo": "{{count}}秒前",
+    "queriedMinutesAgo": "{{count}}分钟前",
+    "queriedHoursAgo": "{{count}}小时前",
     "clickToRefresh": "点击重新查询"
   },
   "appMatrix": {

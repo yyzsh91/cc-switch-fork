@@ -1997,6 +1997,7 @@
     "realTotal": "Tokens Processed",
     "realTotalHint": "Input + Output + Cache Write + Cache Read",
     "freshInput": "Fresh Input",
+    "totalInputWithCache": "Total Input (incl. cache)",
     "cacheHitRate": "Cache Hit Rate",
     "requestLogs": "Request Logs",
     "providerStats": "Provider Stats",
@@ -2214,6 +2215,8 @@
       "more": "More metrics",
       "realTotalHelpTitle": "How total tokens are counted",
       "realTotalHelp": "Fresh input + output + cache writes + cache hits. Fresh input excludes cache; some protocols (such as OpenAI) don't report cache writes, so that part may be low.",
+      "totalInputWithCacheHelpTitle": "How total input including cache is counted",
+      "totalInputWithCacheHelp": "Fresh input + cache writes + cache hits; output is excluded. Some protocols (such as OpenAI) don't report cache writes, so this total may be low.",
       "hitRateHelpTitle": "How the cache hit rate is calculated",
       "hitRateHelp": "Cache hits ÷ (fresh input + cache writes + cache hits)."
     },
@@ -4133,6 +4136,9 @@
       "tokenRefreshPending": "Token refresh pending"
     },
     "updatedAt": "Updated {{time}}",
+    "queriedSecondsAgo": "{{count}}s ago",
+    "queriedMinutesAgo": "{{count}}m ago",
+    "queriedHoursAgo": "{{count}}h ago",
     "clickToRefresh": "Click to check again"
   },
   "appMatrix": {

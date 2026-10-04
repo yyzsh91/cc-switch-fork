@@ -4,7 +4,14 @@ import { QuotaLines } from "@/components/quota/QuotaLines";
 import type { QuotaLine } from "@/components/quota/quotaRules";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) => {
+      if (key === "quota.queriedSecondsAgo") return `${options?.count}秒前`;
+      if (key === "quota.queriedMinutesAgo") return `${options?.count}分钟前`;
+      if (key === "quota.queriedHoursAgo") return `${options?.count}小时前`;
+      return key;
+    },
+  }),
 }));
 
 const lines: QuotaLine[] = [
@@ -68,12 +75,14 @@ describe("QuotaLines text refresh", () => {
             resetsAt: resetAt,
           },
         ]}
+        queriedAt={Date.now() - 50_000}
       />,
     );
 
     try {
       const countdown = screen.getByText("6h16m");
       expect(screen.getByText("Weekly 58% left")).toBeInTheDocument();
+      expect(screen.getByText("50秒前")).toBeInTheDocument();
       expect(countdown).toHaveAttribute("title", "subscription.resetsIn");
       expect(countdown.querySelector("svg")).toBeInTheDocument();
 
@@ -81,6 +90,7 @@ describe("QuotaLines text refresh", () => {
         vi.advanceTimersByTime(30_000);
       });
       expect(screen.getByText("6h15m")).toBeInTheDocument();
+      expect(screen.getByText("1分钟前")).toBeInTheDocument();
     } finally {
       unmount();
       vi.useRealTimers();

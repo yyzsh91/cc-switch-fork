@@ -146,7 +146,7 @@ function MiniMetric({
 }
 
 /**
- * 指标区（v7 S6）：默认 4 张卡——总成本、总请求数、真实消耗 Tokens、缓存命中率；
+ * 指标区（v7 S6）：默认 5 张卡——总成本、总请求数、真实消耗 Tokens、含缓存的总输入、缓存命中率；
  * 「更多指标」展开新增输入 / Output / 创建 / 命中。
  */
 export function UsageHero({
@@ -184,6 +184,7 @@ export function UsageHero({
   const cacheWrite = summary?.totalCacheCreationTokens ?? 0;
   const cacheRead = summary?.totalCacheReadTokens ?? 0;
   const realTotal = summary?.realTotalTokens ?? 0;
+  const totalInputWithCache = input + cacheWrite + cacheRead;
   const hitRate = summary?.cacheHitRate ?? 0;
   const totalCost = parseFiniteNumber(summary?.totalCost);
   const requests = summary?.totalRequests ?? 0;
@@ -209,7 +210,7 @@ export function UsageHero({
           <div
             className={cn(
               "grid gap-2.5",
-              compact ? "grid-cols-2" : "grid-cols-4",
+              compact ? "grid-cols-2" : "grid-cols-5",
             )}
           >
             <MetricCard
@@ -231,6 +232,17 @@ export function UsageHero({
               }}
               value={placeholder ?? formatTokensCompact(realTotal, locale)}
               title={fmtInt(realTotal, locale)}
+            />
+            <MetricCard
+              label={t("usage.totalInputWithCache")}
+              help={{
+                title: t("usage.metrics.totalInputWithCacheHelpTitle"),
+                body: t("usage.metrics.totalInputWithCacheHelp"),
+              }}
+              value={
+                placeholder ?? formatTokensCompact(totalInputWithCache, locale)
+              }
+              title={fmtInt(totalInputWithCache, locale)}
             />
             <MetricCard
               label={t("usage.cacheHitRate")}

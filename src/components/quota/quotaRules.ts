@@ -196,6 +196,25 @@ export function cardRows(lines: QuotaLine[], max = 2): QuotaLine[][] {
   return [...heads.map((line) => [line]), pickLines(rest, MERGED_MAX)];
 }
 
+export function formatQuotaQueriedAgo(
+  timestamp: number,
+  now: number,
+  t: TFunction,
+): string {
+  const elapsedSeconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (elapsedSeconds < 60) {
+    return t("quota.queriedSecondsAgo", { count: elapsedSeconds });
+  }
+  if (elapsedSeconds < 3600) {
+    return t("quota.queriedMinutesAgo", {
+      count: Math.floor(elapsedSeconds / 60),
+    });
+  }
+  return t("quota.queriedHoursAgo", {
+    count: Math.floor(elapsedSeconds / 3600),
+  });
+}
+
 /** 相对时间（「3 分钟前」） */
 export function formatRelativeTime(
   timestamp: number,

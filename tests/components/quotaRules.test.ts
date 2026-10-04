@@ -5,6 +5,7 @@ import {
   cardRows,
   expiredLine,
   failedLines,
+  formatQuotaQueriedAgo,
   pickLines,
   tierLine,
   toneForLeft,
@@ -17,6 +18,9 @@ const t = ((key: string, options?: Record<string, unknown>) => {
     "quota.left": "剩余 {{value}}%",
     "quota.balance": "余额 {{value}}",
     "quota.tierShort": "{{label}} {{value}}%",
+    "quota.queriedSecondsAgo": "{{count}}秒前",
+    "quota.queriedMinutesAgo": "{{count}}分钟前",
+    "quota.queriedHoursAgo": "{{count}}小时前",
   };
   const template = templates[key] ?? key;
   return template.replace(/\{\{(\w+)\}\}/g, (_, name) =>
@@ -25,6 +29,25 @@ const t = ((key: string, options?: Record<string, unknown>) => {
 }) as unknown as TFunction;
 
 describe("quota lines", () => {
+  it("formats the last quota query age in seconds, minutes, then hours", () => {
+    const now = Date.parse("2026-10-04T12:00:00Z");
+    const queriedAt = now - 1_000;
+
+    expect(formatQuotaQueriedAgo(queriedAt, now, t)).toBe("1秒前");
+    expect(formatQuotaQueriedAgo(queriedAt, now + 58_999, t)).toBe("59秒前");
+    expect(formatQuotaQueriedAgo(queriedAt, now + 59_000, t)).toBe("1分钟前");
+    expect(formatQuotaQueriedAgo(queriedAt, now + 3_539_000, t)).toBe(
+      "59分钟前",
+    );
+    expect(formatQuotaQueriedAgo(queriedAt, now + 3_599_000, t)).toBe(
+      "1小时前",
+    );
+    expect(formatQuotaQueriedAgo(queriedAt, now + 26 * 3_600_000, t)).toBe(
+      "26小时前",
+    );
+    expect(formatQuotaQueriedAgo(now + 10_000, now, t)).toBe("0秒前");
+  });
+
   it("writes what is left, quiet until under 10%", () => {
     expect(
       tierLine(

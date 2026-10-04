@@ -1998,6 +1998,7 @@
     "realTotal": "真實消耗 Tokens",
     "realTotalHint": "Input + Output + 快取建立 + 快取命中",
     "freshInput": "新增輸入",
+    "totalInputWithCache": "總輸入（含快取）",
     "cacheHitRate": "快取命中率",
     "requestLogs": "請求日誌",
     "providerStats": "Provider 統計",
@@ -2215,6 +2216,8 @@
       "more": "更多指標",
       "realTotalHelpTitle": "真實消耗 Tokens 怎麼算",
       "realTotalHelp": "新增輸入 + 輸出 + 快取寫入 + 快取命中。新增輸入不含快取；部分協定（如 OpenAI）不上報快取寫入，這一項可能偏低。",
+      "totalInputWithCacheHelpTitle": "總輸入（含快取）怎麼算",
+      "totalInputWithCacheHelp": "新增輸入 + 快取寫入 + 快取命中，不含輸出。部分協定（如 OpenAI）不上報快取寫入，因此總量可能偏低。",
       "hitRateHelpTitle": "快取命中率怎麼算",
       "hitRateHelp": "快取命中 ÷（新增輸入 + 快取寫入 + 快取命中）。"
     },
@@ -4134,6 +4137,9 @@
       "tokenRefreshPending": "權杖待重新整理"
     },
     "updatedAt": "{{time}}更新",
+    "queriedSecondsAgo": "{{count}} 秒前",
+    "queriedMinutesAgo": "{{count}} 分鐘前",
+    "queriedHoursAgo": "{{count}} 小時前",
     "clickToRefresh": "點擊重新查詢"
   },
   "appMatrix": {

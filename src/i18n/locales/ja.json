@@ -1997,6 +1997,7 @@
     "realTotal": "実消費トークン",
     "realTotalHint": "Input + Output + キャッシュ書込 + キャッシュ命中",
     "freshInput": "新規入力",
+    "totalInputWithCache": "キャッシュ込み入力合計",
     "cacheHitRate": "キャッシュヒット率",
     "requestLogs": "リクエストログ",
     "providerStats": "プロバイダー統計",
@@ -2214,6 +2215,8 @@
       "more": "その他の指標",
       "realTotalHelpTitle": "実消費 Tokens の計算方法",
       "realTotalHelp": "新規入力 + 出力 + キャッシュ書き込み + キャッシュヒット。新規入力にキャッシュは含みません。一部のプロトコル（OpenAI など）はキャッシュ書き込みを報告しないため、その分が少なく出ることがあります。",
+      "totalInputWithCacheHelpTitle": "キャッシュ込み入力合計の計算方法",
+      "totalInputWithCacheHelp": "新規入力 + キャッシュ書き込み + キャッシュヒット。出力は含みません。一部のプロトコル（OpenAI など）はキャッシュ書き込みを報告しないため、合計が少なく出ることがあります。",
       "hitRateHelpTitle": "キャッシュヒット率の計算方法",
       "hitRateHelp": "キャッシュヒット ÷（新規入力 + キャッシュ書き込み + キャッシュヒット）。"
     },
@@ -4133,6 +4136,9 @@
       "tokenRefreshPending": "トークンの更新待ち"
     },
     "updatedAt": "{{time}}に更新",
+    "queriedSecondsAgo": "{{count}}秒前",
+    "queriedMinutesAgo": "{{count}}分前",
+    "queriedHoursAgo": "{{count}}時間前",
     "clickToRefresh": "クリックで再取得"
   },
   "appMatrix": {

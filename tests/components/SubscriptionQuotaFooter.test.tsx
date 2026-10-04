@@ -85,9 +85,9 @@ describe("Claude Fable subscription quota", () => {
       },
     ]);
     // 第一行固定是 5 小时，哪怕它剩得最多；其余两档并成一行，快用完的那段单独加深
-    const lines = screen.getByRole("button").children;
-    expect(lines[0]).toHaveTextContent("5 小时剩余 88%");
-    expect(lines[1]).toHaveTextContent("每周 75% · Fable 5% 2d12h");
+    const rows = screen.getByRole("button").children;
+    expect(rows[1]).toHaveTextContent("5 小时剩余 88%");
+    expect(rows[2]).toHaveTextContent(/每周 75%.*Fable 5%.*2d12h/);
     expect(screen.getByText("每周 75%")).toHaveClass("text-fg-2");
     expect(screen.getByText("Fable 5%")).toHaveClass(
       "font-medium",
@@ -110,9 +110,11 @@ describe("Claude Fable subscription quota", () => {
         ...baseTiers,
         { name: "seven_day_fable", utilization: 95, resetsAt: null },
       ]);
-      const lines = screen.getByRole("button").children;
-      expect(lines[0]).toHaveTextContent(first);
-      expect(lines[1]).toHaveTextContent(merged);
+      expect(screen.getByText(first)).toBeInTheDocument();
+      const rows = screen.getByRole("button").children;
+      expect(rows[2]).toHaveTextContent(
+        new RegExp(merged.replace(" · ", ".*")),
+      );
     },
   );
 
